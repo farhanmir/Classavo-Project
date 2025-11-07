@@ -20,6 +20,39 @@ class UserSerializer(serializers.ModelSerializer):
         fields = ["id", "username", "email", "first_name", "last_name", "profile"]
 
 
+class UserUpdateSerializer(serializers.ModelSerializer):
+    profile = ProfileSerializer(required=False)
+
+    class Meta:
+        model = User
+        fields = ["email", "first_name", "last_name", "profile"]
+
+    def update(self, instance, validated_data):
+        profile_data = validated_data.pop("profile", None)
+
+        # Update user fields
+        instance.email = validated_data.get("email", instance.email)
+        instance.first_name = validated_data.get("first_name", instance.first_name)
+        instance.last_name = validated_data.get("last_name", instance.last_name)
+        instance.save()
+
+        # Update profile bio if provided
+        if profile_data:
+            if "bio" in profile_data:
+                instance.profile.bio = profile_data["bio"]
+                instance.profile.save()
+
+        return instance
+
+
+class PublicUserSerializer(serializers.ModelSerializer):
+    role = serializers.CharField(source="profile.role", read_only=True)
+
+    class Meta:
+        model = User
+        fields = ["id", "username", "first_name", "last_name", "role"]
+
+
 class RegisterSerializer(serializers.ModelSerializer):
     role = serializers.ChoiceField(choices=["instructor", "student"], write_only=True)
     password = serializers.CharField(write_only=True)
@@ -39,13 +72,16 @@ class RegisterSerializer(serializers.ModelSerializer):
         role = validated_data.pop("role")
         validated_data["password"] = make_password(validated_data["password"])
         user = User.objects.create(**validated_data)
-        Profile.objects.create(user=user, role=role)
+        # Update the auto-created profile with the selected role
+        user.profile.role = role
+        user.profile.save()
         return user
 
 
 class CourseListSerializer(serializers.ModelSerializer):
     created_by = serializers.SerializerMethodField()
     student_count = serializers.SerializerMethodField()
+    chapter_count = serializers.SerializerMethodField()
 
     class Meta:
         model = Course
@@ -56,6 +92,7 @@ class CourseListSerializer(serializers.ModelSerializer):
             "created_by",
             "created_at",
             "student_count",
+            "chapter_count",
         ]
 
     def get_created_by(self, obj):
@@ -63,6 +100,9 @@ class CourseListSerializer(serializers.ModelSerializer):
 
     def get_student_count(self, obj):
         return obj.enrollments.count()
+
+    def get_chapter_count(self, obj):
+        return obj.chapters.count()
 
 
 class CourseSerializer(serializers.ModelSerializer):

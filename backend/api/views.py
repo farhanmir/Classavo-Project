@@ -1,6 +1,7 @@
 from django.contrib.auth.models import User
 from rest_framework import generics, status, viewsets
 from rest_framework.decorators import action
+from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -22,8 +23,10 @@ from .serializers import (
     CourseSerializer,
     EnrollmentSerializer,
     ProfileSerializer,
+    PublicUserSerializer,
     RegisterSerializer,
     UserSerializer,
+    UserUpdateSerializer,
 )
 
 
@@ -159,31 +162,39 @@ class ChapterViewSet(viewsets.ModelViewSet):
         return ChapterSerializer
 
     def get_permissions(self):
-        if self.action == "create":
+        if self.action in ["list", "retrieve"]:
+            return [AllowAny()]
+        elif self.action == "create":
             return [IsInstructor()]
         elif self.action in ["update", "partial_update", "destroy"]:
             return [IsOwnerOrReadOnly()]
-        elif self.action == "retrieve":
-            return [IsEnrolledOrInstructor()]
         return [IsAuthenticated()]
 
     def get_queryset(self):
         queryset = Chapter.objects.all()
-        course_id = self.request.query_params.get("course_id")
+        # Support both query params and URL kwargs for course_id
+        course_id = self.request.query_params.get("course_id") or self.kwargs.get(
+            "course_id"
+        )
 
         if course_id:
             queryset = queryset.filter(course_id=course_id)
 
-            # Apply visibility rules for list action
+            # Filter chapters based on user permissions
             if self.action == "list":
-                course = Course.objects.get(id=course_id)
+                try:
+                    course = Course.objects.get(id=course_id)
+                except Course.DoesNotExist:
+                    # Return empty queryset if course doesn't exist
+                    return Chapter.objects.none()
+
                 user = self.request.user
 
                 # Show all chapters to instructor
                 if user.is_authenticated and course.created_by == user:
                     return queryset
 
-                # Show only public chapters or chapters from enrolled courses
+                # Show all chapters if user is enrolled, otherwise only public ones
                 if user.is_authenticated and user in course.students.all():
                     return queryset
                 else:
@@ -191,9 +202,16 @@ class ChapterViewSet(viewsets.ModelViewSet):
 
         return queryset.order_by("order")
 
+    def perform_create(self, serializer):
+        course = serializer.validated_data["course"]
+        # Make sure instructors can only add chapters to their own courses
+        if course.created_by != self.request.user:
+            raise PermissionDenied("You can only create chapters for your own courses.")
+        serializer.save()
+
 
 class ProfileView(generics.RetrieveUpdateAPIView):
-    serializer_class = UserSerializer
+    serializer_class = UserUpdateSerializer
     permission_classes = [IsAuthenticated]
 
     def get_object(self):
@@ -202,8 +220,8 @@ class ProfileView(generics.RetrieveUpdateAPIView):
 
 class UserDetailView(generics.RetrieveAPIView):
     queryset = User.objects.all()
-    serializer_class = UserSerializer
-    permission_classes = [IsAuthenticated]
+    serializer_class = PublicUserSerializer
+    permission_classes = [AllowAny]
 
 
 class MyCoursesView(generics.ListAPIView):

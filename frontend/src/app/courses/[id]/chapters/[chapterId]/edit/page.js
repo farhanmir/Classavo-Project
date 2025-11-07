@@ -71,11 +71,25 @@ function ChapterEditPage() {
 
   const handleSave = (e) => {
     e.preventDefault();
+    
+    // Make sure content is sent as object for JSONField
+    let contentToSave = content;
+    if (typeof content === 'string') {
+      try {
+        contentToSave = JSON.parse(content);
+      } catch {
+        contentToSave = {
+          type: 'doc',
+          content: [{ type: 'paragraph', content: content }]
+        };
+      }
+    }
+
     saveMutation.mutate({
       title,
-      order: parseInt(order, 10),
+      order: Number.parseInt(order, 10),
       is_public: isPublic,
-      content: typeof content === 'string' ? content : JSON.stringify(content),
+      content: contentToSave,
     });
   };
 

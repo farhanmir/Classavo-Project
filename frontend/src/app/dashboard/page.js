@@ -38,7 +38,7 @@ function DashboardPage() {
   };
 
   const totalStudents = courses.reduce((sum, course) => sum + (course.student_count || 0), 0);
-  const totalChapters = courses.reduce((sum, course) => sum + (course.chapters?.length || 0), 0);
+  const totalChapters = courses.reduce((sum, course) => sum + (course.chapter_count || 0), 0);
 
   if (isLoading) {
     return (

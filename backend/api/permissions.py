@@ -55,18 +55,18 @@ class IsEnrolledOrInstructor(permissions.BasePermission):
     """
 
     def has_object_permission(self, request, view, obj):
+        # Public chapters should be accessible to everyone
+        if obj.is_public and request.method in permissions.SAFE_METHODS:
+            return True
+
         if not request.user.is_authenticated:
             return False
 
-        # Allow access if user is the course instructor
+        # Course instructor has full access
         if obj.course.created_by == request.user:
             return True
 
-        # Allow access if chapter is public
-        if obj.is_public:
-            return True
-
-        # Allow access if user is enrolled in the course
+        # Check if user is enrolled in the course
         return request.user in obj.course.students.all()
 
 

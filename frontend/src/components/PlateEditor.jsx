@@ -1,37 +1,65 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 export default function PlateEditor({ initialValue, onChange, readOnly = false }) {
   const editorRef = useRef(null);
+  const [editorContent, setEditorContent] = useState(() => {
+    // Parse initial value if it's a string
+    if (typeof initialValue === 'string') {
+      try {
+        return JSON.parse(initialValue);
+      } catch {
+        return { type: 'doc', content: [{ type: 'paragraph', content: initialValue }] };
+      }
+    }
+    return initialValue || { type: 'doc', content: [{ type: 'paragraph', content: '' }] };
+  });
 
   useEffect(() => {
-    // Placeholder for Plate.js initialization
-    // In a real implementation, this would initialize the Plate editor
-    // with the necessary plugins and configuration
-    console.log('PlateEditor initialized', { initialValue, readOnly });
-  }, [initialValue, readOnly]);
+    if (typeof initialValue === 'string') {
+      try {
+        setEditorContent(JSON.parse(initialValue));
+      } catch {
+        setEditorContent({ type: 'doc', content: [{ type: 'paragraph', content: initialValue }] });
+      }
+    } else if (initialValue) {
+      setEditorContent(initialValue);
+    }
+  }, [initialValue]);
 
   const handleChange = (e) => {
     if (!readOnly && onChange) {
-      onChange(e.target.value);
+      const newContent = e.target.value;
+      // Store content as structured object for JSONField
+      const contentObj = {
+        type: 'doc',
+        content: [{ type: 'paragraph', content: newContent }]
+      };
+      setEditorContent(contentObj);
+      onChange(contentObj);
     }
   };
 
-  // Simplified editor for now - replace with actual Plate.js implementation
-  // when integrating the @udecode/plate packages
+  const getDisplayValue = () => {
+    if (typeof editorContent === 'string') return editorContent;
+    if (editorContent?.content && Array.isArray(editorContent.content)) {
+      return editorContent.content.map(c => c.content || '').join('\n');
+    }
+    return JSON.stringify(editorContent, null, 2);
+  };
+
+  // TODO: Replace with actual Plate.js implementation
+  // Currently using simplified textarea editor
   if (readOnly) {
     return (
       <div className="prose max-w-none p-6 bg-white rounded-lg border border-gray-200">
         <div
           ref={editorRef}
-          className="min-h-[200px]"
-          dangerouslySetInnerHTML={{
-            __html: typeof initialValue === 'string'
-              ? initialValue
-              : JSON.stringify(initialValue, null, 2),
-          }}
-        />
+          className="min-h-[200px] whitespace-pre-wrap"
+        >
+          {getDisplayValue()}
+        </div>
       </div>
     );
   }
@@ -89,11 +117,7 @@ export default function PlateEditor({ initialValue, onChange, readOnly = false }
       <textarea
         ref={editorRef}
         className="w-full p-4 min-h-[400px] focus:outline-none resize-y"
-        defaultValue={
-          typeof initialValue === 'string'
-            ? initialValue
-            : JSON.stringify(initialValue, null, 2)
-        }
+        value={getDisplayValue()}
         onChange={handleChange}
         placeholder="Start writing your chapter content..."
       />

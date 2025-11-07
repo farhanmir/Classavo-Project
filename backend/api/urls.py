@@ -28,6 +28,12 @@ urlpatterns = [
     path("users/<int:pk>/", UserDetailView.as_view(), name="user-detail"),
     # Student specific endpoints
     path("my-courses/", MyCoursesView.as_view(), name="my-courses"),
+    # Nested chapters route
+    path(
+        "courses/<int:course_id>/chapters/",
+        ChapterViewSet.as_view({"get": "list", "post": "create"}),
+        name="course-chapters",
+    ),
     # Router URLs (includes courses and chapters ViewSets)
     path("", include(router.urls)),
 ]
