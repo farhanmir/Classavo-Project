@@ -19,11 +19,12 @@ function ChapterEditPage() {
   const [title, setTitle] = useState('');
   const [order, setOrder] = useState(1);
   const [isPublic, setIsPublic] = useState(false);
-  const [content, setContent] = useState('');
+  const [content, setContent] = useState({ type: 'doc', content: [{ type: 'paragraph', content: '' }] });
 
   const isNewChapter = chapterId === 'new';
 
-  const { isLoading } = useQuery({
+  // Only fetch chapter data if editing an existing chapter
+  const { isLoading, error } = useQuery({
     queryKey: ['chapter', chapterId],
     queryFn: async () => {
       const response = await api.get(`/chapters/${chapterId}/`);
@@ -33,7 +34,12 @@ function ChapterEditPage() {
       setContent(response.data.content);
       return response.data;
     },
-    enabled: !isNewChapter,
+    enabled: chapterId !== 'new' && !!chapterId,
+    retry: false,
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
+    refetchOnReconnect: false,
+    staleTime: Infinity,
   });
 
   const saveMutation = useMutation({
@@ -99,7 +105,7 @@ function ChapterEditPage() {
     }
   };
 
-  if (isLoading) {
+  if (isLoading && !isNewChapter) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>

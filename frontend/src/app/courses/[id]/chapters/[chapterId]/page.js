@@ -18,6 +18,8 @@ export default function ChapterViewerPage() {
       const response = await api.get(`/chapters/${chapterId}/`);
       return response.data;
     },
+    enabled: chapterId !== 'new' && !!chapterId,
+    retry: false,
   });
 
   const { data: chapters = [] } = useQuery({
@@ -67,24 +69,25 @@ export default function ChapterViewerPage() {
   const previousChapter = currentIndex > 0 ? chapters[currentIndex - 1] : null;
   const nextChapter = currentIndex < chapters.length - 1 ? chapters[currentIndex + 1] : null;
 
-  const isInstructor = user?.id === chapter?.course?.created_by?.id;
+  // Check if user is instructor - role is in profile
+  const isInstructor = user?.profile?.role === 'instructor';
 
   return (
     <div className="max-w-4xl mx-auto">
       {/* Breadcrumb */}
       <div className="mb-6 text-gray-600">
         <Link href={`/courses/${courseId}`} className="hover:text-blue-600">
-          {chapter.course_title}
+          {chapter?.course_title || 'Course'}
         </Link>
         <span className="mx-2">›</span>
-        <span className="text-gray-800">{chapter.title}</span>
+        <span className="text-gray-800">{chapter?.title}</span>
       </div>
 
       {/* Chapter Header */}
       <div className="bg-white rounded-lg shadow-md p-8 mb-8">
         <div className="flex items-center justify-between mb-4">
           <h1 className="text-3xl font-bold text-gray-800">
-            {chapter.title}
+            {chapter?.title}
           </h1>
           {isInstructor && (
             <Link href={`/courses/${courseId}/chapters/${chapterId}/edit`}>
@@ -96,8 +99,8 @@ export default function ChapterViewerPage() {
         </div>
 
         <div className="text-sm text-gray-500 mb-6">
-          Chapter {chapter.order}
-          {chapter.is_public && (
+          Chapter {chapter?.order}
+          {chapter?.is_public && (
             <span className="ml-2 bg-green-100 text-green-800 px-2 py-1 rounded text-xs">
               Public
             </span>
@@ -106,7 +109,7 @@ export default function ChapterViewerPage() {
 
         {/* Chapter Content */}
         <div className="prose max-w-none">
-          <PlateEditor initialValue={chapter.content} readOnly={true} />
+          <PlateEditor initialValue={chapter?.content} readOnly={true} />
         </div>
       </div>
 
@@ -130,7 +133,7 @@ export default function ChapterViewerPage() {
                 d="M15 19l-7-7 7-7"
               />
             </svg>
-            Previous: {previousChapter.title}
+            Previous: {previousChapter?.title}
           </Link>
         ) : (
           <div></div>
@@ -148,7 +151,7 @@ export default function ChapterViewerPage() {
             href={`/courses/${courseId}/chapters/${nextChapter.id}`}
             className="flex items-center text-blue-600 hover:text-blue-800"
           >
-            Next: {nextChapter.title}
+            Next: {nextChapter?.title}
             <svg
               className="w-5 h-5 ml-2"
               fill="none"
