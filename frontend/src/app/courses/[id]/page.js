@@ -78,7 +78,8 @@ export default function CourseDetailPage() {
     );
   }
 
-  const isInstructor = user?.id === course?.created_by?.id;
+  // Check if current user is the course owner
+  const isInstructor = user?.profile?.role === 'instructor' && user?.id === course?.created_by?.id;
   const isEnrolled = course?.is_enrolled;
   const isStudent = user?.profile?.role === 'student';
 
