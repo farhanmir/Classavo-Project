@@ -1,0 +1,13 @@
+venv/
+__pycache__/
+*.pyc
+env/
+.env
+node_modules/
+dist/
+build/
+/.dart_tool/
+/.vscode/
+/.idea/
+*.sqlite3
+*.log
