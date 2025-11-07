@@ -6,6 +6,7 @@ const useAuthStore = create((set) => ({
   accessToken: null,
   refreshToken: null,
   isAuthenticated: false,
+  hasInitialized: false,
 
   login: (userData, tokens) => {
     const { access, refresh } = tokens;
@@ -77,6 +78,7 @@ const useAuthStore = create((set) => ({
           accessToken,
           refreshToken,
           isAuthenticated: true,
+          hasInitialized: true,
         });
       } catch (error) {
         // Token invalid, clear everything
@@ -89,8 +91,12 @@ const useAuthStore = create((set) => ({
           accessToken: null,
           refreshToken: null,
           isAuthenticated: false,
+          hasInitialized: true,
         });
       }
+    } else {
+      // No saved auth, mark as initialized
+      set({ hasInitialized: true });
     }
   },
 }));

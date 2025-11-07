@@ -45,7 +45,7 @@ function ChapterEditPage() {
   const saveMutation = useMutation({
     mutationFn: async (data) => {
       if (isNewChapter) {
-        const response = await api.post('/chapters/', {
+        const response = await api.post(`/courses/${courseId}/chapters/`, {
           ...data,
           course: courseId,
         });

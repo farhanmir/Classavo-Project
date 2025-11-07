@@ -1,126 +1,79 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useMemo } from 'react';
+import { Plate, PlateContent } from '@udecode/plate/react';
+import { BoldPlugin } from '@udecode/plate-bold/react';
+import { ItalicPlugin } from '@udecode/plate-italic/react';
+import { UnderlinePlugin } from '@udecode/plate-underline/react';
+import { HeadingPlugin } from '@udecode/plate-heading/react';
+import { ParagraphPlugin } from '@udecode/plate-paragraph/react';
+import { ListPlugin } from '@udecode/plate-list/react';
+import { BlockquotePlugin } from '@udecode/plate-block-quote/react';
 
 export default function PlateEditor({ initialValue, onChange, readOnly = false }) {
-  const editorRef = useRef(null);
-  const [editorContent, setEditorContent] = useState(() => {
-    // Parse initial value if it's a string
-    if (typeof initialValue === 'string') {
-      try {
-        return JSON.parse(initialValue);
-      } catch {
-        return { type: 'doc', content: [{ type: 'paragraph', content: initialValue }] };
-      }
-    }
-    return initialValue || { type: 'doc', content: [{ type: 'paragraph', content: '' }] };
-  });
+  // Initialize Plate with core plugins
+  const plugins = useMemo(
+    () => [
+      ParagraphPlugin(),
+      HeadingPlugin(),
+      BoldPlugin(),
+      ItalicPlugin(),
+      UnderlinePlugin(),
+      ListPlugin(),
+      BlockquotePlugin(),
+    ],
+    []
+  );
 
-  useEffect(() => {
+  // Handle value changes from the editor
+  const handleValueChange = useCallback(
+    (value) => {
+      if (!readOnly && onChange) {
+        // Ensure value is a proper JSON structure for JSONField
+        const contentObj = Array.isArray(value) ? { type: 'doc', content: value } : value;
+        onChange(contentObj);
+      }
+    },
+    [readOnly, onChange]
+  );
+
+  // Normalize initial value
+  const initialContent = useMemo(() => {
+    if (!initialValue) {
+      return [{ type: 'p', children: [{ text: '' }] }];
+    }
+
     if (typeof initialValue === 'string') {
       try {
-        setEditorContent(JSON.parse(initialValue));
+        const parsed = JSON.parse(initialValue);
+        return parsed.content || [{ type: 'p', children: [{ text: '' }] }];
       } catch {
-        setEditorContent({ type: 'doc', content: [{ type: 'paragraph', content: initialValue }] });
+        return [{ type: 'p', children: [{ text: initialValue }] }];
       }
-    } else if (initialValue) {
-      setEditorContent(initialValue);
     }
+
+    if (Array.isArray(initialValue)) {
+      return initialValue;
+    }
+
+    return initialValue.content || [{ type: 'p', children: [{ text: '' }] }];
   }, [initialValue]);
 
-  const handleChange = (e) => {
-    if (!readOnly && onChange) {
-      const newContent = e.target.value;
-      // Store content as structured object for JSONField
-      const contentObj = {
-        type: 'doc',
-        content: [{ type: 'paragraph', content: newContent }]
-      };
-      setEditorContent(contentObj);
-      onChange(contentObj);
-    }
-  };
-
-  const getDisplayValue = () => {
-    if (typeof editorContent === 'string') return editorContent;
-    if (editorContent?.content && Array.isArray(editorContent.content)) {
-      return editorContent.content.map(c => c.content || '').join('\n');
-    }
-    return JSON.stringify(editorContent, null, 2);
-  };
-
-  // TODO: Replace with actual Plate.js implementation
-  // Currently using simplified textarea editor
   if (readOnly) {
     return (
       <div className="prose max-w-none p-6 bg-white rounded-lg border border-gray-200">
-        <div
-          ref={editorRef}
-          className="min-h-[200px] whitespace-pre-wrap"
-        >
-          {getDisplayValue()}
-        </div>
+        <Plate plugins={plugins} initialValue={initialContent} readOnly>
+          <PlateContent className="min-h-[200px]" />
+        </Plate>
       </div>
     );
   }
 
   return (
-    <div className="border border-gray-300 rounded-lg overflow-hidden">
-      {/* Toolbar placeholder */}
-      <div className="bg-gray-100 border-b border-gray-300 p-2 flex space-x-2">
-        <button
-          type="button"
-          className="px-3 py-1 bg-white border border-gray-300 rounded hover:bg-gray-50"
-          title="Bold"
-        >
-          <strong>B</strong>
-        </button>
-        <button
-          type="button"
-          className="px-3 py-1 bg-white border border-gray-300 rounded hover:bg-gray-50"
-          title="Italic"
-        >
-          <em>I</em>
-        </button>
-        <button
-          type="button"
-          className="px-3 py-1 bg-white border border-gray-300 rounded hover:bg-gray-50"
-          title="Underline"
-        >
-          <u>U</u>
-        </button>
-        <div className="border-l border-gray-300 mx-2"></div>
-        <button
-          type="button"
-          className="px-3 py-1 bg-white border border-gray-300 rounded hover:bg-gray-50"
-          title="Heading"
-        >
-          H
-        </button>
-        <button
-          type="button"
-          className="px-3 py-1 bg-white border border-gray-300 rounded hover:bg-gray-50"
-          title="Bullet List"
-        >
-          •
-        </button>
-        <button
-          type="button"
-          className="px-3 py-1 bg-white border border-gray-300 rounded hover:bg-gray-50"
-          title="Link"
-        >
-          🔗
-        </button>
-      </div>
-
-      {/* Editor area */}
-      <textarea
-        ref={editorRef}
-        className="w-full p-4 min-h-[400px] focus:outline-none resize-y"
-        value={getDisplayValue()}
-        onChange={handleChange}
-        placeholder="Start writing your chapter content..."
-      />
+    <div className="border border-gray-300 rounded-lg overflow-hidden bg-white">
+      <Plate plugins={plugins} initialValue={initialContent} onChange={handleValueChange}>
+        <PlateContent className="min-h-[400px] p-4 prose-none prose-p:m-0 prose-p:mb-2 prose-h1:text-2xl prose-h1:font-bold prose-h2:text-xl prose-h2:font-bold prose-h3:text-lg prose-h3:font-bold focus:outline-none" />
+      </Plate>
     </div>
   );
 }

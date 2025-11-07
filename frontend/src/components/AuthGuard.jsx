@@ -6,10 +6,15 @@ import useAuthStore from '@/store/authStore';
 
 export default function AuthGuard({ children, requireAuth = true, requiredRole = null }) {
   const router = useRouter();
-  const { user, isAuthenticated } = useAuthStore();
+  const { user, isAuthenticated, hasInitialized } = useAuthStore();
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    // Wait for auth initialization to complete
+    if (!hasInitialized) {
+      return;
+    }
+
     // Check authentication status
     if (requireAuth && !isAuthenticated) {
       router.push('/auth/login');
@@ -25,7 +30,7 @@ export default function AuthGuard({ children, requireAuth = true, requiredRole =
     }
 
     setIsLoading(false);
-  }, [isAuthenticated, user, requireAuth, requiredRole, router]);
+  }, [hasInitialized, isAuthenticated, user, requireAuth, requiredRole, router]);
 
   if (isLoading) {
     return (

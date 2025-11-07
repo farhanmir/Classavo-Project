@@ -11,3 +11,4 @@ build/
 /.idea/
 *.sqlite3
 *.log
+PROJECT_BLUEPRINT.md

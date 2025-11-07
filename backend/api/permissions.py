@@ -31,13 +31,13 @@ class IsStudent(permissions.BasePermission):
 
 class IsOwnerOrReadOnly(permissions.BasePermission):
     """
-    Permission to allow read access to all authenticated users,
+    Permission to allow read access to all users (authenticated or not),
     but only allow write access to the owner.
     """
 
     def has_object_permission(self, request, view, obj):
         if request.method in permissions.SAFE_METHODS:
-            return request.user.is_authenticated
+            return True
 
         # Check if object is a Course or Chapter
         if hasattr(obj, "created_by"):

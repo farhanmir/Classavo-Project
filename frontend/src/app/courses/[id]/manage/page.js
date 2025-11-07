@@ -167,7 +167,7 @@ function CourseManagePage() {
           <h2 className="text-2xl font-bold text-gray-800">
             Manage Chapters
           </h2>
-          <Link href={`/courses/${courseId}/chapters/new`}>
+          <Link href={`/courses/${courseId}/chapters/new/edit`}>
             <Button variant="primary">Add New Chapter</Button>
           </Link>
         </div>

@@ -57,13 +57,20 @@ class LoginView(TokenObtainPairView):
         response = super().post(request, *args, **kwargs)
 
         if response.status_code == 200:
-            # Get user from username in request
-            username = request.data.get("username")
+            # Decode access token to get user ID instead of relying on username field
             try:
-                user = User.objects.get(username=username)
-                user_data = UserSerializer(user).data
-                response.data["user"] = user_data
-            except User.DoesNotExist:
+                from rest_framework_simplejwt.tokens import AccessToken
+
+                access_token = response.data.get("access")
+                token = AccessToken(access_token)
+                user_id = token.get("user_id")
+
+                if user_id:
+                    user = User.objects.get(id=user_id)
+                    user_data = UserSerializer(user).data
+                    response.data["user"] = user_data
+            except Exception:
+                # Fall back gracefully if token decoding fails
                 pass
 
         return response
@@ -124,14 +131,7 @@ class CourseViewSet(viewsets.ModelViewSet):
     def enroll(self, request, pk=None):
         course = self.get_object()
 
-        # Check permission
-        permission = CanEnroll()
-        if not permission.has_object_permission(request, self, course):
-            return Response(
-                {"error": "You cannot enroll in this course"},
-                status=status.HTTP_403_FORBIDDEN,
-            )
-
+        # DRF permissions already checked via get_permissions()
         enrollment = Enrollment.objects.create(student=request.user, course=course)
         serializer = EnrollmentSerializer(enrollment)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
@@ -162,8 +162,10 @@ class ChapterViewSet(viewsets.ModelViewSet):
         return ChapterSerializer
 
     def get_permissions(self):
-        if self.action in ["list", "retrieve"]:
+        if self.action == "list":
             return [AllowAny()]
+        elif self.action == "retrieve":
+            return [IsEnrolledOrInstructor()]
         elif self.action == "create":
             return [IsInstructor()]
         elif self.action in ["update", "partial_update", "destroy"]:
@@ -201,6 +203,13 @@ class ChapterViewSet(viewsets.ModelViewSet):
                     queryset = queryset.filter(is_public=True)
 
         return queryset.order_by("order")
+
+    def retrieve(self, request, *args, **kwargs):
+        """Override retrieve to enforce object-level permissions for chapters."""
+        chapter = self.get_object()
+        self.check_object_permissions(request, chapter)
+        serializer = self.get_serializer(chapter)
+        return Response(serializer.data)
 
     def perform_create(self, serializer):
         course = serializer.validated_data["course"]
