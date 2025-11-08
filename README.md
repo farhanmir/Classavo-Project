@@ -8,8 +8,6 @@ This project was developed as part of the Classavo hiring process.
 
 A small, full-stack learning management system built with a Django REST API and a Next.js + Tailwind frontend. This repository was created as a coding exercise and demonstrates common LMS features like courses, chapters, role-based access (Instructor / Student), and a rich content editor.
 
-Key Steps:
-
 ## Quick snapshot
 
 - Backend: Django + Django REST Framework (API, auth, models)
