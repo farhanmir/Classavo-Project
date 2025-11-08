@@ -3,6 +3,36 @@
 import { useCallback, useState, useEffect } from 'react';
 import { Plate, PlateContent, usePlateEditor } from '@udecode/plate-core/react';
 
+// Small toolbar button helper
+function ToolbarButton({ onClick, children, title }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title={title}
+      className="px-2 py-1 bg-white border border-gray-200 rounded hover:bg-gray-50 text-sm"
+    >
+      {children}
+    </button>
+  );
+}
+
+function applyCommand(command, value, editor) {
+  try {
+    // Use the browser's execCommand as a pragmatic fallback to apply formatting
+    // to the contenteditable area used by the Plate/Slate editor.
+    document.execCommand(command, false, value);
+    // restore focus to the editor if possible
+    if (editor?.selection) {
+      const el = document.querySelector('.slate-editor [contenteditable="true"], .slate-editor');
+      if (el) el.focus();
+    }
+  } catch (e) {
+    // no-op
+    console.error('Formatting command failed', e);
+  }
+}
+
 export default function PlateEditor({ initialValue, onChange, readOnly = false }) {
   const [value, setValue] = useState(null);
   
@@ -61,6 +91,62 @@ export default function PlateEditor({ initialValue, onChange, readOnly = false }
 
   return (
     <div className="border border-gray-300 rounded-lg overflow-hidden bg-white">
+      {/* Toolbar */}
+      <div className="bg-gray-50 border-b border-gray-200 p-2 flex gap-2">
+        <ToolbarButton
+          title="Bold"
+          onClick={() => applyCommand('bold', null, editor)}
+        >
+          <strong>B</strong>
+        </ToolbarButton>
+
+        <ToolbarButton
+          title="Italic"
+          onClick={() => applyCommand('italic', null, editor)}
+        >
+          <em>I</em>
+        </ToolbarButton>
+
+        <ToolbarButton
+          title="Underline"
+          onClick={() => applyCommand('underline', null, editor)}
+        >
+          <span className="underline">U</span>
+        </ToolbarButton>
+
+        <div className="mx-1 border-l" />
+
+        <ToolbarButton
+          title="H1"
+          onClick={() => applyCommand('formatBlock', 'H1', editor)}
+        >
+          H1
+        </ToolbarButton>
+
+        <ToolbarButton
+          title="H2"
+          onClick={() => applyCommand('formatBlock', 'H2', editor)}
+        >
+          H2
+        </ToolbarButton>
+
+        <ToolbarButton
+          title="H3"
+          onClick={() => applyCommand('formatBlock', 'H3', editor)}
+        >
+          H3
+        </ToolbarButton>
+
+        <div className="mx-1 border-l" />
+
+        <ToolbarButton
+          title="Blockquote"
+          onClick={() => applyCommand('formatBlock', 'BLOCKQUOTE', editor)}
+        >
+          ❝
+        </ToolbarButton>
+      </div>
+
       <Plate editor={editor} value={value} onChange={handleChange}>
         <PlateContent 
           className="min-h-[400px] p-4 focus:outline-none focus:ring-2 focus:ring-blue-500" 
