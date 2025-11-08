@@ -1,4 +1,6 @@
 from django.contrib.auth.models import User
+from django.db import IntegrityError
+from django.shortcuts import get_object_or_404
 from rest_framework import generics, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied
@@ -130,9 +132,17 @@ class CourseViewSet(viewsets.ModelViewSet):
     @action(methods=["post"], detail=True)
     def enroll(self, request, pk=None):
         course = self.get_object()
+        # Ensure object-level permissions (CanEnroll) are checked
+        self.check_object_permissions(request, course)
 
-        # DRF permissions already checked via get_permissions()
-        enrollment = Enrollment.objects.create(student=request.user, course=course)
+        try:
+            enrollment = Enrollment.objects.create(student=request.user, course=course)
+        except IntegrityError:
+            return Response(
+                {"error": "You are already enrolled in this course."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         serializer = EnrollmentSerializer(enrollment)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
@@ -173,14 +183,13 @@ class ChapterViewSet(viewsets.ModelViewSet):
         return [IsAuthenticated()]
 
     def get_queryset(self):
-        queryset = Chapter.objects.all()
         # Support both query params and URL kwargs for course_id
         course_id = self.request.query_params.get("course_id") or self.kwargs.get(
             "course_id"
         )
 
         if course_id:
-            queryset = queryset.filter(course_id=course_id)
+            queryset = Chapter.objects.filter(course_id=course_id)
 
             # Filter chapters based on user permissions
             if self.action == "list":
@@ -194,15 +203,41 @@ class ChapterViewSet(viewsets.ModelViewSet):
 
                 # Show all chapters to instructor
                 if user.is_authenticated and course.created_by == user:
-                    return queryset
+                    return queryset.order_by("order")
 
                 # Show all chapters if user is enrolled, otherwise only public ones
                 if user.is_authenticated and user in course.students.all():
-                    return queryset
+                    return queryset.order_by("order")
                 else:
-                    queryset = queryset.filter(is_public=True)
+                    return queryset.filter(is_public=True).order_by("order")
 
-        return queryset.order_by("order")
+        # If no course_id provided, only return public chapters to avoid leaking private titles
+        return Chapter.objects.filter(is_public=True).order_by("order")
+
+    def create(self, request, *args, **kwargs):
+        # Only allow creation via nested route that provides course_id
+        course_id = self.kwargs.get("course_id")
+        if not course_id:
+            return Response(
+                {
+                    "detail": 'Method "POST" not allowed at this endpoint. Use nested route /courses/<course_id>/chapters/.'
+                },
+                status=status.HTTP_405_METHOD_NOT_ALLOWED,
+            )
+
+        course = get_object_or_404(Course, id=course_id)
+
+        # Ensure the requesting user is the course owner
+        if course.created_by != request.user:
+            raise PermissionDenied("You can only create chapters for your own courses.")
+
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save(course=course)
+        headers = self.get_success_headers(serializer.data)
+        return Response(
+            serializer.data, status=status.HTTP_201_CREATED, headers=headers
+        )
 
     def retrieve(self, request, *args, **kwargs):
         """Override retrieve to enforce object-level permissions for chapters."""
@@ -212,11 +247,21 @@ class ChapterViewSet(viewsets.ModelViewSet):
         return Response(serializer.data)
 
     def perform_create(self, serializer):
-        course = serializer.validated_data["course"]
-        # Make sure instructors can only add chapters to their own courses
-        if course.created_by != self.request.user:
+        # Try to obtain course either from validated_data (if provided) or from URL kwargs
+        course = serializer.validated_data.get("course")
+        if not course:
+            course_id = self.kwargs.get("course_id")
+            if course_id:
+                course = get_object_or_404(Course, id=course_id)
+
+        if course and course.created_by != self.request.user:
             raise PermissionDenied("You can only create chapters for your own courses.")
-        serializer.save()
+
+        if course:
+            serializer.save(course=course)
+        else:
+            # If no course available, let serializer handle (should not happen for nested create)
+            serializer.save()
 
 
 class ProfileView(generics.RetrieveUpdateAPIView):

@@ -19,7 +19,8 @@ function ChapterEditPage() {
   const [title, setTitle] = useState('');
   const [order, setOrder] = useState(1);
   const [isPublic, setIsPublic] = useState(false);
-  const [content, setContent] = useState({ type: 'doc', content: [{ type: 'paragraph', content: '' }] });
+  // Initialize with a valid Plate/Slate value to avoid shape mismatches
+  const [content, setContent] = useState([{ type: 'p', children: [{ text: '' }] }]);
 
   const isNewChapter = chapterId === 'new';
 
@@ -61,7 +62,9 @@ function ChapterEditPage() {
       router.push(`/courses/${courseId}/manage`);
     },
     onError: (error) => {
-      alert('Error saving chapter: ' + (error.response?.data?.detail || error.message));
+      console.error('Save error:', error.response?.data);
+      const errorMsg = error.response?.data ? JSON.stringify(error.response.data) : error.message;
+      alert('Error saving chapter: ' + errorMsg);
     },
   });
 
@@ -78,25 +81,16 @@ function ChapterEditPage() {
   const handleSave = (e) => {
     e.preventDefault();
     
-    // Make sure content is sent as object for JSONField
-    let contentToSave = content;
-    if (typeof content === 'string') {
-      try {
-        contentToSave = JSON.parse(content);
-      } catch {
-        contentToSave = {
-          type: 'doc',
-          content: [{ type: 'paragraph', content: content }]
-        };
-      }
-    }
-
-    saveMutation.mutate({
+    // Content is already an array from PlateEditor, use it directly
+    const dataToSave = {
       title,
       order: Number.parseInt(order, 10),
       is_public: isPublic,
-      content: contentToSave,
-    });
+      content: content || [],  // Ensure content is always an array
+    };
+
+    console.log('Saving chapter data:', dataToSave);
+    saveMutation.mutate(dataToSave);
   };
 
   const handleDelete = () => {

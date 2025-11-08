@@ -37,7 +37,7 @@ class Chapter(models.Model):
         Course, on_delete=models.CASCADE, related_name="chapters"
     )
     title = models.CharField(max_length=200)
-    content = models.JSONField(default=dict)
+    content = models.JSONField(default=list, blank=True, null=True)
     order = models.PositiveIntegerField()
     is_public = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)

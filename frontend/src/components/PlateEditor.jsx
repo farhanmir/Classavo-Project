@@ -1,69 +1,59 @@
 'use client';
 
-import { useCallback, useMemo } from 'react';
-import { Plate, PlateContent } from '@udecode/plate/react';
-import { BoldPlugin } from '@udecode/plate-bold/react';
-import { ItalicPlugin } from '@udecode/plate-italic/react';
-import { UnderlinePlugin } from '@udecode/plate-underline/react';
-import { HeadingPlugin } from '@udecode/plate-heading/react';
-import { ParagraphPlugin } from '@udecode/plate-paragraph/react';
-import { ListPlugin } from '@udecode/plate-list/react';
-import { BlockquotePlugin } from '@udecode/plate-block-quote/react';
+import { useCallback, useState, useEffect } from 'react';
+import { Plate, PlateContent, usePlateEditor } from '@udecode/plate-core/react';
 
 export default function PlateEditor({ initialValue, onChange, readOnly = false }) {
-  // Initialize Plate with core plugins
-  const plugins = useMemo(
-    () => [
-      ParagraphPlugin(),
-      HeadingPlugin(),
-      BoldPlugin(),
-      ItalicPlugin(),
-      UnderlinePlugin(),
-      ListPlugin(),
-      BlockquotePlugin(),
-    ],
-    []
-  );
+  const [value, setValue] = useState(null);
+  
+  // Create editor instance
+  const editor = usePlateEditor({
+    value: value || [{ type: 'p', children: [{ text: '' }] }],
+  });
 
-  // Handle value changes from the editor
-  const handleValueChange = useCallback(
-    (value) => {
-      if (!readOnly && onChange) {
-        // Ensure value is a proper JSON structure for JSONField
-        const contentObj = Array.isArray(value) ? { type: 'doc', content: value } : value;
-        onChange(contentObj);
-      }
-    },
-    [readOnly, onChange]
-  );
-
-  // Normalize initial value
-  const initialContent = useMemo(() => {
+  // Initialize value on client side
+  useEffect(() => {
     if (!initialValue) {
-      return [{ type: 'p', children: [{ text: '' }] }];
+      setValue([{ type: 'p', children: [{ text: '' }] }]);
+      return;
     }
 
     if (typeof initialValue === 'string') {
       try {
         const parsed = JSON.parse(initialValue);
-        return parsed.content || [{ type: 'p', children: [{ text: '' }] }];
+        setValue(parsed.content || parsed || [{ type: 'p', children: [{ text: '' }] }]);
       } catch {
-        return [{ type: 'p', children: [{ text: initialValue }] }];
+        setValue([{ type: 'p', children: [{ text: initialValue }] }]);
       }
+    } else if (Array.isArray(initialValue)) {
+      setValue(initialValue);
+    } else if (typeof initialValue === 'object' && initialValue.content) {
+      setValue(initialValue.content);
+    } else {
+      setValue(initialValue || [{ type: 'p', children: [{ text: '' }] }]);
     }
-
-    if (Array.isArray(initialValue)) {
-      return initialValue;
-    }
-
-    return initialValue.content || [{ type: 'p', children: [{ text: '' }] }];
   }, [initialValue]);
+
+  const handleChange = useCallback(
+    ({ value: newValue }) => {
+      setValue(newValue);
+      if (!readOnly && onChange) {
+        onChange(newValue);
+      }
+    },
+    [readOnly, onChange]
+  );
+
+  // Don't render until value is initialized
+  if (value === null) {
+    return <div className="min-h-[400px] bg-gray-50 animate-pulse rounded-lg" />;
+  }
 
   if (readOnly) {
     return (
       <div className="prose max-w-none p-6 bg-white rounded-lg border border-gray-200">
-        <Plate plugins={plugins} initialValue={initialContent} readOnly>
-          <PlateContent className="min-h-[200px]" />
+        <Plate editor={editor} value={value} readOnly>
+          <PlateContent className="min-h-[200px]" readOnly />
         </Plate>
       </div>
     );
@@ -71,8 +61,11 @@ export default function PlateEditor({ initialValue, onChange, readOnly = false }
 
   return (
     <div className="border border-gray-300 rounded-lg overflow-hidden bg-white">
-      <Plate plugins={plugins} initialValue={initialContent} onChange={handleValueChange}>
-        <PlateContent className="min-h-[400px] p-4 prose-none prose-p:m-0 prose-p:mb-2 prose-h1:text-2xl prose-h1:font-bold prose-h2:text-xl prose-h2:font-bold prose-h3:text-lg prose-h3:font-bold focus:outline-none" />
+      <Plate editor={editor} value={value} onChange={handleChange}>
+        <PlateContent 
+          className="min-h-[400px] p-4 focus:outline-none focus:ring-2 focus:ring-blue-500" 
+          placeholder="Start typing your chapter content..."
+        />
       </Plate>
     </div>
   );

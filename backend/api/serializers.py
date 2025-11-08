@@ -143,6 +143,8 @@ class ChapterListSerializer(serializers.ModelSerializer):
 
 
 class ChapterSerializer(serializers.ModelSerializer):
+    # Make course read-only for updates so PUT/PATCH doesn't require sending the course FK again.
+    course = serializers.PrimaryKeyRelatedField(read_only=True)
     course_title = serializers.SerializerMethodField()
 
     class Meta:
@@ -158,7 +160,10 @@ class ChapterSerializer(serializers.ModelSerializer):
             "updated_at",
             "course_title",
         ]
-        read_only_fields = ["created_at", "updated_at"]
+        read_only_fields = ["created_at", "updated_at", "course_title"]
+        extra_kwargs = {
+            "course": {"required": False}  # Make course optional for updates
+        }
 
     def get_course_title(self, obj):
         return obj.course.title
