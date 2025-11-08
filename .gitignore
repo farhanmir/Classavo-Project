@@ -11,4 +11,15 @@ build/
 /.idea/
 *.sqlite3
 *.log
+.venv/
+.next/
+/.sass-cache/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+pnpm-lock.yaml
+/.pytest_cache/
+/.DS_Store
+!.env.example
 PROJECT_BLUEPRINT.md
