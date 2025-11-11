@@ -1,8 +1,7 @@
 from django.urls import include, path
 from rest_framework.routers import DefaultRouter
-from rest_framework_simplejwt.views import TokenRefreshView
 
-from .views import (
+from .views import (  # defensive refresh view
     ChapterViewSet,
     CourseViewSet,
     LoginView,
@@ -10,6 +9,7 @@ from .views import (
     MyCoursesView,
     ProfileView,
     RegisterView,
+    SafeTokenRefreshView,
     UserDetailView,
 )
 
@@ -22,7 +22,7 @@ urlpatterns = [
     path("auth/register/", RegisterView.as_view(), name="register"),
     path("auth/login/", LoginView.as_view(), name="login"),
     path("auth/logout/", LogoutView.as_view(), name="logout"),
-    path("auth/token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
+    path("auth/token/refresh/", SafeTokenRefreshView.as_view(), name="token_refresh"),
     # User profile endpoints
     path("profile/", ProfileView.as_view(), name="profile"),
     path("users/<int:pk>/", UserDetailView.as_view(), name="user-detail"),

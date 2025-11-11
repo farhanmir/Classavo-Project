@@ -7,8 +7,9 @@ from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework_simplejwt.exceptions import TokenError
 from rest_framework_simplejwt.tokens import RefreshToken
-from rest_framework_simplejwt.views import TokenObtainPairView
+from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
 from .models import Chapter, Course, Enrollment, Profile
 from .permissions import (
@@ -233,7 +234,20 @@ class ChapterViewSet(viewsets.ModelViewSet):
 
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        serializer.save(course=course)
+
+        try:
+            serializer.save(course=course)
+        except IntegrityError:
+            # This commonly happens when the client posts a chapter `order`
+            # that already exists for the same course (unique constraint on
+            # course + order). Return a 400 with a helpful message so the
+            # frontend can handle and present the error instead of causing a
+            # 500 internal server error.
+            return Response(
+                {"error": "Chapter order already exists for this course."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         headers = self.get_success_headers(serializer.data)
         return Response(
             serializer.data, status=status.HTTP_201_CREATED, headers=headers
@@ -286,3 +300,36 @@ class MyCoursesView(generics.ListAPIView):
         return Course.objects.filter(students=self.request.user).order_by(
             "-enrollments__enrolled_at"
         )
+
+
+class SafeTokenRefreshView(TokenRefreshView):
+    """
+    Defensive TokenRefreshView wrapper.
+
+    SimpleJWT can raise a User.DoesNotExist during refresh if the refresh
+    token references a user that has since been deleted (this surfaced as a
+    500 in production/testing). Return a 401 with a clear message instead of
+    allowing a 500 to leak.
+    """
+
+    def post(self, request, *args, **kwargs):
+        try:
+            return super().post(request, *args, **kwargs)
+        except Exception as exc:
+            # Map common token/user lookup errors to 401 Unauthorized so the
+            # frontend can handle refresh failures gracefully.
+            from django.contrib.auth.models import User
+
+            if isinstance(exc, User.DoesNotExist):
+                return Response(
+                    {"detail": "User not found for provided token."},
+                    status=status.HTTP_401_UNAUTHORIZED,
+                )
+
+            if isinstance(exc, TokenError):
+                return Response(
+                    {"detail": str(exc)}, status=status.HTTP_401_UNAUTHORIZED
+                )
+
+            # Unknown error: re-raise to avoid hiding unexpected failures
+            raise
