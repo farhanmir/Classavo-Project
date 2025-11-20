@@ -204,7 +204,7 @@ function DashboardPage() {
           </div>
         ) : (
           <div className="p-12 text-center text-gray-500">
-            <p className="mb-4">You haven't created any courses yet.</p>
+            <p className="mb-4">You haven&apos;t created any courses yet.</p>
             <Link href="/create-course">
               <Button variant="primary">Create Your First Course</Button>
             </Link>

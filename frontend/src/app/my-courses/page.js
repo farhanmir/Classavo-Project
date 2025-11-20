@@ -62,7 +62,7 @@ function MyCoursesPage() {
             No Enrolled Courses
           </h2>
           <p className="text-gray-500 mb-6">
-            You haven't enrolled in any courses yet. Start learning today!
+            You haven&apos;t enrolled in any courses yet. Start learning today!
           </p>
           <Link
             href="/courses"

@@ -111,7 +111,7 @@ function CreateCoursePage() {
 
         <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded">
           <p className="text-sm text-blue-800">
-            <strong>Tip:</strong> After creating your course, you'll be able to add
+            <strong>Tip:</strong> After creating your course, you&apos;ll be able to add
             chapters and manage course content from the course management page.
           </p>
         </div>

@@ -231,7 +231,7 @@ function CourseManagePage() {
         title="Delete Chapter"
       >
         <p className="mb-4">
-          Are you sure you want to delete the chapter "{chapterToDelete?.title}"?
+          Are you sure you want to delete the chapter &quot;{chapterToDelete?.title}&quot;?
           This action cannot be undone.
         </p>
         <div className="flex space-x-4">
